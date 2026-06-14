@@ -1,0 +1,261 @@
+{% extends 'base.html' %}
+{% block title %}Energy Live Monitor{% endblock %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="text-white"><i class="fas fa-bolt me-2 text-warning"></i>Energy Live Monitor</h4>
+    <div>
+        <span class="badge bg-warning text-dark me-2"><i class="fas fa-circle me-1"></i>LIVE</span>
+        <span id="energyClock" class="text-warning fw-bold"></span>
+    </div>
+</div>
+
+<!-- KPI Cards -->
+<div class="row g-4 mb-4">
+    <div class="col-md-3">
+        <div class="kpi-card">
+            <div class="kpi-icon bg-warning"><i class="fas fa-bolt"></i></div>
+            <div class="kpi-info">
+                <h3 id="totalKwh">{{ "%.1f"|format(total_kwh) }}</h3>
+                <p>Total kWh Today</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="kpi-card">
+            <div class="kpi-icon bg-success"><i class="fas fa-rupee-sign"></i></div>
+            <div class="kpi-info">
+                <h3 id="totalCost">₨{{ "%.0f"|format(total_cost) }}</h3>
+                <p>Total Cost (PKR)</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="kpi-card">
+            <div class="kpi-icon bg-danger"><i class="fas fa-exclamation-triangle"></i></div>
+            <div class="kpi-info">
+                <h3 id="highZones">{{ zone_energy|selectattr('total_kwh', 'greaterthan', 400)|list|length }}</h3>
+                <p>High Usage Zones</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="kpi-card">
+            <div class="kpi-icon bg-info"><i class="fas fa-microchip"></i></div>
+            <div class="kpi-info">
+                <h3>{{ energy_devices|length }}</h3>
+                <p>Active Meters</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Energy Gauges -->
+<div class="row g-4 mb-4">
+    {% for device in energy_devices %}
+    <div class="col-xl-3 col-md-6">
+        <div class="card-dark text-center">
+            <h6 class="text-warning mb-1">{{ device.device_code }}</h6>
+            <p class="text-muted mb-2" style="font-size:11px;"><i class="fas fa-map-marker-alt me-1"></i>{{ device.zone_name }}</p>
+            <canvas id="egauge-{{ device.device_id }}" width="200" height="120" style="max-width:100%;"></canvas>
+            <div id="e-value-{{ device.device_id }}" style="font-size:28px; font-weight:700; color:#ffc107;">{{ "%.1f"|format(device.latest_kwh) }}</div>
+            <div style="font-size:12px; color:#666;">kWh</div>
+            <div id="e-status-{{ device.device_id }}" class="badge bg-success mt-1">Normal</div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<div class="row g-4 mb-4">
+    <!-- Live Chart -->
+    <div class="col-xl-8">
+        <div class="card-dark">
+            <h5><i class="fas fa-chart-line me-2 text-warning"></i>Live Energy Consumption</h5>
+            <canvas id="energyLiveChart" height="100"></canvas>
+        </div>
+    </div>
+
+    <!-- Zone Summary -->
+    <div class="col-xl-4">
+        <div class="card-dark">
+            <h5><i class="fas fa-map me-2 text-info"></i>Zone Consumption</h5>
+            {% for z in zone_energy %}
+            <div class="mb-2">
+                <div class="d-flex justify-content-between mb-1">
+                    <span style="font-size:12px; color:#ccc;">{{ z.zone_name }}</span>
+                    <span style="font-size:12px; color:#ffc107;">{{ "%.1f"|format(z.total_kwh) }} kWh</span>
+                </div>
+                <div class="progress" style="height:6px; background:#333;">
+                    <div class="progress-bar bg-warning" 
+                         style="width:{{ [z.total_kwh / 10, 100]|min }}%">
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- Zone Bar Chart -->
+<div class="card-dark">
+    <h5><i class="fas fa-chart-bar me-2 text-warning"></i>Zone Energy Comparison</h5>
+    <canvas id="zoneEnergyBar" height="80"></canvas>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function updateEnergyClock() {
+    document.getElementById('energyClock').textContent = new Date().toLocaleTimeString();
+}
+setInterval(updateEnergyClock, 1000);
+
+const energyDevices = [
+    {% for device in energy_devices %}
+    { id: {{ device.device_id }}, code: '{{ device.device_code }}', zone: '{{ device.zone_name }}', kwh: {{ device.latest_kwh }} },
+    {% endfor %}
+];
+
+function getEnergyStatus(kwh) {
+    if(kwh > 500) return { color: '#dc3545', label: 'Critical', bg: 'bg-danger' };
+    if(kwh > 400) return { color: '#ffc107', label: 'High', bg: 'bg-warning text-dark' };
+    if(kwh > 300) return { color: '#17a2b8', label: 'Moderate', bg: 'bg-info' };
+    return { color: '#28a745', label: 'Normal', bg: 'bg-success' };
+}
+
+function drawEnergyGauge(canvasId, kwh) {
+    const canvas = document.getElementById(canvasId);
+    if(!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const cx = 100, cy = 110, r = 80;
+
+    ctx.clearRect(0, 0, 200, 120);
+
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, Math.PI, 2 * Math.PI);
+    ctx.strokeStyle = '#333';
+    ctx.lineWidth = 16;
+    ctx.stroke();
+
+    const segments = [
+        { color: '#28a745', start: 0, end: 0.33 },
+        { color: '#ffc107', start: 0.33, end: 0.66 },
+        { color: '#dc3545', start: 0.66, end: 1.0 }
+    ];
+
+    segments.forEach(seg => {
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, Math.PI + seg.start * Math.PI, Math.PI + seg.end * Math.PI);
+        ctx.strokeStyle = seg.color;
+        ctx.lineWidth = 16;
+        ctx.stroke();
+    });
+
+    const maxKwh = 600;
+    const angle = Math.PI + (Math.min(kwh, maxKwh) / maxKwh) * Math.PI;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(cx + (r - 20) * Math.cos(angle), cy + (r - 20) * Math.sin(angle));
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(cx, cy, 6, 0, 2 * Math.PI);
+    ctx.fillStyle = '#fff';
+    ctx.fill();
+
+    ctx.fillStyle = '#666';
+    ctx.font = '10px Arial';
+    ctx.fillText('0', 15, cy + 5);
+    ctx.fillText('600', 170, cy + 5);
+}
+
+function updateEnergyGauges() {
+    energyDevices.forEach(device => {
+        device.kwh += (Math.random() * 20) - 10;
+        device.kwh = Math.max(50, Math.min(600, device.kwh));
+
+        drawEnergyGauge('egauge-' + device.id, device.kwh);
+
+        const status = getEnergyStatus(device.kwh);
+        const valEl = document.getElementById('e-value-' + device.id);
+        const statusEl = document.getElementById('e-status-' + device.id);
+
+        if(valEl) { valEl.textContent = device.kwh.toFixed(1); valEl.style.color = status.color; }
+        if(statusEl) { statusEl.textContent = status.label; statusEl.className = 'badge mt-1 ' + status.bg; }
+    });
+    updateZoneBar();
+}
+
+// Live Chart
+const liveCtx = document.getElementById('energyLiveChart').getContext('2d');
+const liveData = Array.from({length: 20}, () => Math.floor(Math.random() * 400) + 100);
+const liveLabels = Array.from({length: 20}, (_, i) => i + 's');
+
+const liveChart = new Chart(liveCtx, {
+    type: 'line',
+    data: {
+        labels: liveLabels,
+        datasets: [{
+            label: 'kWh',
+            data: liveData,
+            borderColor: '#ffc107',
+            backgroundColor: 'rgba(255,193,7,0.1)',
+            borderWidth: 2,
+            fill: true,
+            tension: 0.4,
+            pointRadius: 0
+        }]
+    },
+    options: {
+        responsive: true,
+        animation: { duration: 0 },
+        plugins: { legend: { labels: { color: '#fff' }}},
+        scales: {
+            x: { ticks: { color: '#aaa' }, grid: { color: '#222' }},
+            y: { ticks: { color: '#aaa' }, grid: { color: '#222' }, min: 0, max: 700 }
+        }
+    }
+});
+
+// Zone Bar Chart
+const zoneBarCtx = document.getElementById('zoneEnergyBar').getContext('2d');
+const zoneChart = new Chart(zoneBarCtx, {
+    type: 'bar',
+    data: {
+        labels: [{% for z in zone_energy %}'{{ z.zone_name }}',{% endfor %}],
+        datasets: [{
+            label: 'kWh',
+            data: [{% for z in zone_energy %}{{ z.total_kwh }},{% endfor %}],
+            backgroundColor: [{% for z in zone_energy %}
+                '{{ "rgba(220,53,69,0.7)" if z.total_kwh > 400 else "rgba(255,193,7,0.7)" }}',
+            {% endfor %}],
+            borderRadius: 5
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: { legend: { labels: { color: '#fff' }}},
+        scales: {
+            x: { ticks: { color: '#aaa' }, grid: { color: '#222' }},
+            y: { ticks: { color: '#aaa' }, grid: { color: '#222' }}
+        }
+    }
+});
+
+function updateZoneBar() {
+    zoneChart.update();
+}
+
+setInterval(() => {
+    updateEnergyGauges();
+    liveData.shift();
+    liveData.push(Math.floor(Math.random() * 400) + 100);
+    liveChart.update();
+}, 2000);
+
+updateEnergyGauges();
+</script>
+{% endblock %}

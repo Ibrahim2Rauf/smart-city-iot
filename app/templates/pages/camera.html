@@ -1,0 +1,283 @@
+{% extends 'base.html' %}
+{% block title %}Live Camera Feed{% endblock %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="text-white"><i class="fas fa-video me-2 text-danger"></i>Live Camera Feed</h4>
+    <div>
+        <span class="badge bg-danger me-2"><i class="fas fa-circle me-1"></i>LIVE</span>
+        <span id="liveClock2" class="text-info fw-bold"></span>
+    </div>
+</div>
+
+<!-- Camera Grid -->
+<div class="row g-3 mb-4">
+    {% for device in devices %}
+    {% if device.device_type == 'Traffic Sensor' or device.device_type == 'CCTV' %}
+    <div class="col-xl-4 col-md-6">
+        <div class="card-dark" style="border: 1px solid #30363d;">
+            <!-- Camera Header -->
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="text-info fw-bold" style="font-size:13px;">
+                    <i class="fas fa-video me-1"></i>{{ device.device_code }}
+                </span>
+                <span class="badge bg-success"><i class="fas fa-circle me-1" style="font-size:8px;"></i>LIVE</span>
+            </div>
+            <p class="text-muted mb-2" style="font-size:11px;">
+                <i class="fas fa-map-marker-alt me-1"></i>{{ device.zone_name }}
+            </p>
+
+            <!-- Camera Screen -->
+            <div class="camera-screen" id="cam-{{ device.device_id }}" 
+                 style="background:#000; border-radius:8px; height:180px; position:relative; overflow:hidden; border:1px solid #333;">
+                
+                <!-- Road Background -->
+                <canvas id="canvas-{{ device.device_id }}" width="400" height="180" 
+                        style="width:100%; height:100%;"></canvas>
+                
+                <!-- Overlay Info -->
+                <div style="position:absolute; top:8px; left:8px; font-size:10px; color:#00ff00; font-family:monospace;">
+                    CAM-{{ device.device_id }} | {{ device.zone_name }}
+                </div>
+                <div style="position:absolute; top:8px; right:8px; font-size:10px; color:#ff0000; font-family:monospace;">
+                    ● REC
+                </div>
+                <div style="position:absolute; bottom:8px; left:8px; font-size:10px; color:#fff; font-family:monospace;" 
+                     id="cam-info-{{ device.device_id }}">
+                    Vehicles: 0 | Speed: 0 km/h
+                </div>
+                <div style="position:absolute; bottom:8px; right:8px;" id="cam-status-{{ device.device_id }}">
+                    <span class="badge bg-success">FREE</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    {% endfor %}
+</div>
+
+<!-- Stats Row -->
+<div class="row g-4">
+    <div class="col-xl-8">
+        <div class="card-dark">
+            <h5><i class="fas fa-chart-line me-2 text-info"></i>Live Vehicle Count</h5>
+            <canvas id="liveChart" height="100"></canvas>
+        </div>
+    </div>
+    <div class="col-xl-4">
+        <div class="card-dark">
+            <h5><i class="fas fa-traffic-light me-2 text-warning"></i>Zone Status</h5>
+            {% for device in devices %}
+            {% if device.device_type == 'Traffic Sensor' %}
+            <div class="d-flex justify-content-between align-items-center p-2 mb-2" 
+                 style="background:#1f2937; border-radius:8px;" id="zone-status-{{ device.device_id }}">
+                <div>
+                    <div class="text-white" style="font-size:13px;">{{ device.zone_name }}</div>
+                    <div class="text-muted" style="font-size:11px;">{{ device.device_code }}</div>
+                </div>
+                <span class="badge bg-success" id="zone-badge-{{ device.device_id }}">FREE</span>
+            </div>
+            {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Live clock
+function updateClock2() {
+    document.getElementById('liveClock2').textContent = new Date().toLocaleTimeString();
+}
+setInterval(updateClock2, 1000);
+
+// Camera simulation data
+const cameras = [
+    {% for device in devices %}
+    {% if device.device_type == 'Traffic Sensor' or device.device_type == 'CCTV' %}
+    { id: {{ device.device_id }}, zone: '{{ device.zone_name }}', code: '{{ device.device_code }}' },
+    {% endif %}
+    {% endfor %}
+];
+
+// Car colors
+const carColors = ['#ff4444', '#4444ff', '#ffff44', '#44ff44', '#ff44ff', '#ffffff', '#ff8800'];
+
+// Each camera has its own cars
+const cameraStates = {};
+cameras.forEach(cam => {
+    cameraStates[cam.id] = {
+        cars: [],
+        vehicleCount: Math.floor(Math.random() * 200) + 50,
+        speed: Math.floor(Math.random() * 80) + 10,
+        congestion: 'free'
+    };
+    // Initialize cars
+    for(let i = 0; i < 5; i++) {
+        cameraStates[cam.id].cars.push({
+            x: Math.random() * 400,
+            y: [80, 110, 140][Math.floor(Math.random() * 3)],
+            speed: Math.random() * 3 + 1,
+            color: carColors[Math.floor(Math.random() * carColors.length)],
+            width: 30,
+            height: 15
+        });
+    }
+});
+
+// Draw camera feed
+function drawCamera(camId) {
+    const canvas = document.getElementById('canvas-' + camId);
+    if(!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const state = cameraStates[camId];
+
+    // Background - night road
+    ctx.fillStyle = '#1a1a2e';
+    ctx.fillRect(0, 0, 400, 180);
+
+    // Road
+    ctx.fillStyle = '#2d2d2d';
+    ctx.fillRect(0, 65, 400, 110);
+
+    // Road lines
+    ctx.strokeStyle = '#ffff00';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([20, 15]);
+    ctx.beginPath();
+    ctx.moveTo(0, 95);
+    ctx.lineTo(400, 95);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(0, 125);
+    ctx.lineTo(400, 125);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Buildings background
+    ctx.fillStyle = '#0d1117';
+    for(let i = 0; i < 8; i++) {
+        let h = 20 + (i * 7) % 40;
+        ctx.fillRect(i * 55, 65 - h, 40, h);
+    }
+
+    // Move and draw cars
+    state.cars.forEach(car => {
+        car.x += car.speed;
+        if(car.x > 420) car.x = -40;
+
+        // Car body
+        ctx.fillStyle = car.color;
+        ctx.fillRect(car.x, car.y, car.width, car.height);
+
+        // Car windows
+        ctx.fillStyle = '#87ceeb';
+        ctx.fillRect(car.x + 5, car.y + 2, 8, 8);
+        ctx.fillRect(car.x + 16, car.y + 2, 8, 8);
+
+        // Headlights
+        ctx.fillStyle = '#ffffaa';
+        ctx.fillRect(car.x + car.width - 3, car.y + 3, 3, 4);
+        ctx.fillRect(car.x + car.width - 3, car.y + 9, 3, 4);
+    });
+
+    // Scanline effect
+    ctx.fillStyle = 'rgba(0,255,0,0.03)';
+    for(let i = 0; i < 180; i += 4) {
+        ctx.fillRect(0, i, 400, 2);
+    }
+}
+
+// Update stats
+function updateStats() {
+    cameras.forEach(cam => {
+        const state = cameraStates[cam.id];
+
+        // Random fluctuation
+        state.vehicleCount += Math.floor(Math.random() * 20) - 10;
+        state.vehicleCount = Math.max(10, Math.min(800, state.vehicleCount));
+        state.speed += Math.floor(Math.random() * 10) - 5;
+        state.speed = Math.max(5, Math.min(100, state.speed));
+
+        // Adjust car speeds based on congestion
+        if(state.speed < 20) {
+            state.congestion = 'jam';
+            state.cars.forEach(c => c.speed = 0.3);
+        } else if(state.speed < 40) {
+            state.congestion = 'heavy';
+            state.cars.forEach(c => c.speed = 0.8);
+        } else if(state.speed < 70) {
+            state.congestion = 'moderate';
+            state.cars.forEach(c => c.speed = 1.5);
+        } else {
+            state.congestion = 'free';
+            state.cars.forEach(c => c.speed = 3);
+        }
+
+        // Update UI
+        const infoEl = document.getElementById('cam-info-' + cam.id);
+        const statusEl = document.getElementById('cam-status-' + cam.id);
+        const zoneBadge = document.getElementById('zone-badge-' + cam.id);
+
+        if(infoEl) infoEl.textContent = `Vehicles: ${state.vehicleCount} | Speed: ${state.speed} km/h`;
+
+        const colors = { free: 'bg-success', moderate: 'bg-info', heavy: 'bg-warning', jam: 'bg-danger' };
+        if(statusEl) statusEl.innerHTML = `<span class="badge ${colors[state.congestion]}">${state.congestion.toUpperCase()}</span>`;
+        if(zoneBadge) {
+            zoneBadge.className = `badge ${colors[state.congestion]}`;
+            zoneBadge.textContent = state.congestion.toUpperCase();
+        }
+    });
+}
+
+// Live chart
+const liveCtx = document.getElementById('liveChart').getContext('2d');
+const liveLabels = Array.from({length: 20}, (_, i) => i + 's');
+const liveData = Array.from({length: 20}, () => Math.floor(Math.random() * 300) + 100);
+
+const liveChart = new Chart(liveCtx, {
+    type: 'line',
+    data: {
+        labels: liveLabels,
+        datasets: [{
+            label: 'Vehicle Count',
+            data: liveData,
+            borderColor: '#00d4ff',
+            backgroundColor: 'rgba(0,212,255,0.1)',
+            borderWidth: 2,
+            fill: true,
+            tension: 0.4,
+            pointRadius: 0
+        }]
+    },
+    options: {
+        responsive: true,
+        animation: { duration: 0 },
+        plugins: { legend: { labels: { color: '#fff' }}},
+        scales: {
+            x: { ticks: { color: '#aaa' }, grid: { color: '#222' }},
+            y: { ticks: { color: '#aaa' }, grid: { color: '#222' }, min: 0, max: 900 }
+        }
+    }
+});
+
+// Main animation loop
+function animate() {
+    cameras.forEach(cam => drawCamera(cam.id));
+    requestAnimationFrame(animate);
+}
+
+// Update stats every 2 seconds
+setInterval(() => {
+    updateStats();
+    // Update live chart
+    liveData.shift();
+    liveData.push(Math.floor(Math.random() * 300) + 100);
+    liveChart.update();
+}, 2000);
+
+animate();
+</script>
+{% endblock %}

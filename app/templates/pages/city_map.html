@@ -1,0 +1,192 @@
+{% extends 'base.html' %}
+{% block title %}City Map{% endblock %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="text-white"><i class="fas fa-map me-2 text-success"></i>Smart City Map</h4>
+    <div>
+        <span class="badge bg-success me-1"><i class="fas fa-circle me-1" style="font-size:8px;"></i>Active</span>
+        <span class="badge bg-warning me-1">Maintenance</span>
+        <span class="badge bg-danger me-1">Inactive</span>
+        <span class="badge bg-info">AQI Sensor</span>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Map -->
+    <div class="col-xl-8">
+        <div class="card-dark" style="padding:0; overflow:hidden; border-radius:12px;">
+            <div id="cityMap" style="height:550px; width:100%;"></div>
+        </div>
+    </div>
+
+    <!-- Zone Info Panel -->
+    <div class="col-xl-4">
+     <div class="card-dark mb-3">
+            <h5><i class="fas fa-info-circle me-2 text-info"></i>Zone Details</h5>
+            <div id="zoneDetails">
+                <p class="text-muted text-center mt-3">Click on a zone marker to see details</p>
+            </div>
+        </div>
+
+        <div class="card-dark">
+            <h5><i class="fas fa-list me-2 text-warning"></i>All Zones</h5>
+            {% for zone in zones %}
+            <div class="d-flex justify-content-between align-items-center p-2 mb-2" 
+                 style="background:#1f2937; border-radius:8px; cursor:pointer;"
+                 onclick="focusZone({{ zone.zone_id }})">
+                <div>
+                    <div class="text-white" style="font-size:13px;">{{ zone.zone_name }}</div>
+                    <div class="text-muted" style="font-size:11px;">{{ zone.city }}</div>
+                </div>
+                <div class="text-end">
+                    <span class="badge bg-primary">{{ zone.device_count }} devices</span>
+                    {% if zone.open_alerts > 0 %}
+                    <span class="badge bg-danger ms-1">{{ zone.open_alerts }} alerts</span>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- Leaflet CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+// Initialize map centered on Pakistan
+const map = L.map('cityMap').setView([30.3753, 69.3451], 5);
+
+// Dark tile layer
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    attribution: '© OpenStreetMap © CARTO',
+    maxZoom: 18
+}).addTo(map);
+
+// Device data from Flask
+const devices = [
+    {% for d in devices %}
+    {
+        id: {{ d.device_id }},
+        code: '{{ d.device_code }}',
+        type: '{{ d.device_type }}',
+        status: '{{ d.status }}',
+        lat: {{ d.latitude or 30.3753 }},
+        lng: {{ d.longitude or 69.3451 }},
+        zone: '{{ d.zone_name }}',
+        zone_id: {{ d.zone_id }},
+        latest_value: {{ d.latest_value or 0 }},
+        latest_type: '{{ d.latest_type or "N/A" }}'
+    },
+    {% endfor %}
+];
+
+const zones = [
+    {% for z in zones %}
+    {
+        id: {{ z.zone_id }},
+        name: '{{ z.zone_name }}',
+        city: '{{ z.city }}',
+        area: {{ z.area_sq_km or 0 }},
+        devices: {{ z.device_count }},
+        alerts: {{ z.open_alerts or 0 }}
+    },
+    {% endfor %}
+];
+
+// Device type icons
+function getDeviceIcon(type, status) {
+    const colors = { active: '#28a745', maintenance: '#ffc107', inactive: '#dc3545' };
+    const icons = {
+        'AQI Sensor': '💨',
+        'Traffic Sensor': '🚦',
+        'Energy Meter': '⚡',
+        'Weather Station': '🌤️',
+        'CCTV': '📷'
+    };
+    const color = colors[status] || '#666';
+    const icon = icons[type] || '📡';
+
+    return L.divIcon({
+        html: `<div style="
+            background:${color};
+            width:36px; height:36px;
+            border-radius:50%;
+            display:flex; align-items:center; justify-content:center;
+            font-size:16px;
+            border:3px solid #fff;
+            box-shadow:0 2px 8px rgba(0,0,0,0.5);
+        ">${icon}</div>`,
+        iconSize: [36, 36],
+        iconAnchor: [18, 18],
+        className: ''
+    });
+}
+
+// Zone markers group
+const zoneMarkers = {};
+
+// Add device markers
+devices.forEach(device => {
+    const marker = L.marker([device.lat, device.lng], {
+        icon: getDeviceIcon(device.type, device.status)
+    }).addTo(map);
+
+    marker.bindPopup(`
+        <div style="background:#161b22; color:#fff; padding:10px; border-radius:8px; min-width:200px;">
+            <h6 style="color:#00d4ff; margin:0 0 8px 0;">${device.code}</h6>
+            <p style="margin:3px 0; font-size:12px;"><b>Type:</b> ${device.type}</p>
+            <p style="margin:3px 0; font-size:12px;"><b>Zone:</b> ${device.zone}</p>
+            <p style="margin:3px 0; font-size:12px;"><b>Status:</b> 
+                <span style="color:${device.status === 'active' ? '#28a745' : device.status === 'maintenance' ? '#ffc107' : '#dc3545'}">
+                    ${device.status.toUpperCase()}
+                </span>
+            </p>
+            ${device.latest_value ? `<p style="margin:3px 0; font-size:12px;"><b>Latest:</b> ${device.latest_value} (${device.latest_type})</p>` : ''}
+            <p style="margin:3px 0; font-size:11px; color:#666;">${device.lat}, ${device.lng}</p>
+        </div>
+    `, { maxWidth: 250 });
+
+    if(!zoneMarkers[device.zone_id]) zoneMarkers[device.zone_id] = [];
+    zoneMarkers[device.zone_id].push(marker);
+});
+
+// Focus on zone
+function focusZone(zoneId) {
+    const zone = zones.find(z => z.id === zoneId);
+    if(!zone) return;
+
+    const markers = zoneMarkers[zoneId];
+    if(markers && markers.length > 0) {
+        const group = L.featureGroup(markers);
+        map.fitBounds(group.getBounds().pad(0.3));
+        markers[0].openPopup();
+    }
+
+    // Update zone details panel
+    document.getElementById('zoneDetails').innerHTML = `
+        <div style="background:#1f2937; border-radius:8px; padding:15px;">
+            <h6 style="color:#00d4ff;">${zone.name}</h6>
+            <p style="color:#aaa; font-size:12px; margin:5px 0;"><i class="fas fa-city me-1"></i>${zone.city}</p>
+            <p style="color:#aaa; font-size:12px; margin:5px 0;"><i class="fas fa-expand me-1"></i>${zone.area} km²</p>
+            <div class="d-flex gap-2 mt-2">
+                <span class="badge bg-primary">${zone.devices} Devices</span>
+                ${zone.alerts > 0 ? `<span class="badge bg-danger">${zone.alerts} Alerts</span>` : '<span class="badge bg-success">No Alerts</span>'}
+            </div>
+        </div>
+    `;
+}
+
+// Auto fit all markers
+if(devices.length > 0) {
+    const allMarkers = devices.map(d => L.marker([d.lat, d.lng]));
+    const group = L.featureGroup(allMarkers);
+    map.fitBounds(group.getBounds().pad(0.2));
+}
+</script>
+{% endblock %}

@@ -1,0 +1,241 @@
+{% extends 'base.html' %}
+{% block title %}AQI Live Monitor{% endblock %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="text-white"><i class="fas fa-wind me-2 text-info"></i>AQI Live Monitor</h4>
+    <div>
+        <span class="badge bg-success me-2"><i class="fas fa-circle me-1"></i>LIVE</span>
+        <span id="aqiClock" class="text-info fw-bold"></span>
+    </div>
+</div>
+
+<!-- AQI Gauges -->
+<div class="row g-4 mb-4">
+    {% for device in aqi_devices %}
+    <div class="col-xl-4 col-md-6">
+        <div class="card-dark text-center">
+            <h6 class="text-info mb-1">{{ device.device_code }}</h6>
+            <p class="text-muted mb-2" style="font-size:11px;"><i class="fas fa-map-marker-alt me-1"></i>{{ device.zone_name }}</p>
+            <canvas id="gauge-{{ device.device_id }}" width="250" height="150" style="max-width:100%;"></canvas>
+            <div id="aqi-value-{{ device.device_id }}" style="font-size:36px; font-weight:700; color:#00d4ff;">--</div>
+            <div id="aqi-label-{{ device.device_id }}" class="badge bg-secondary mt-1" style="font-size:13px;">Loading...</div>
+            <div id="aqi-advice-{{ device.device_id }}" class="text-muted mt-2" style="font-size:11px;"></div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- AQI Trend Chart -->
+<div class="row g-4 mb-4">
+    <div class="col-xl-8">
+        <div class="card-dark">
+            <h5><i class="fas fa-chart-line me-2 text-info"></i>AQI Trend (Last 24 Hours)</h5>
+            <canvas id="aqiTrendChart" height="100"></canvas>
+        </div>
+    </div>
+    <div class="col-xl-4">
+        <div class="card-dark">
+            <h5><i class="fas fa-info-circle me-2 text-warning"></i>AQI Scale</h5>
+            <div class="mt-2">
+                {% for level in [('0-50', 'Good', 'success', 'Safe to go outside'), ('51-100', 'Moderate', 'warning', 'Sensitive groups careful'), ('101-150', 'Unhealthy (Sensitive)', 'orange', 'Reduce outdoor activity'), ('151-200', 'Unhealthy', 'danger', 'Avoid outdoor activity'), ('201-300', 'Very Unhealthy', 'purple', 'Stay indoors'), ('300+', 'Hazardous', 'dark', 'Emergency conditions')] %}
+                <div class="d-flex justify-content-between align-items-center p-2 mb-1" style="background:#1f2937; border-radius:6px;">
+                    <span style="font-size:12px; color:#aaa;">{{ level[0] }}</span>
+                    <span class="badge bg-{{ level[2] }}">{{ level[1] }}</span>
+                    <span style="font-size:11px; color:#666;">{{ level[3] }}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Zone AQI Comparison -->
+<div class="card-dark">
+    <h5><i class="fas fa-chart-bar me-2 text-danger"></i>Zone AQI Comparison</h5>
+    <canvas id="zoneAqiChart" height="80"></canvas>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Live clock
+function updateAqiClock() {
+    document.getElementById('aqiClock').textContent = new Date().toLocaleTimeString();
+}
+setInterval(updateAqiClock, 1000);
+
+const aqiDevices = [
+    {% for device in aqi_devices %}
+    { id: {{ device.device_id }}, code: '{{ device.device_code }}', zone: '{{ device.zone_name }}', currentAqi: {{ device.latest_aqi or 50 }} },
+    {% endfor %}
+];
+
+// AQI Color and label
+function getAqiInfo(aqi) {
+    if(aqi <= 50) return { color: '#00e400', label: 'Good', advice: '✅ Air quality is satisfactory', bg: 'bg-success' };
+    if(aqi <= 100) return { color: '#ffff00', label: 'Moderate', advice: '⚠️ Sensitive groups be careful', bg: 'bg-warning' };
+    if(aqi <= 150) return { color: '#ff7e00', label: 'Unhealthy (Sensitive)', advice: '🟠 Reduce outdoor activity', bg: 'bg-warning' };
+    if(aqi <= 200) return { color: '#ff0000', label: 'Unhealthy', advice: '🔴 Avoid outdoor activity', bg: 'bg-danger' };
+    if(aqi <= 300) return { color: '#8f3f97', label: 'Very Unhealthy', advice: '🟣 Stay indoors!', bg: 'bg-danger' };
+    return { color: '#7e0023', label: 'Hazardous', advice: '☠️ Emergency! Do not go outside', bg: 'bg-danger' };
+}
+
+// Draw gauge
+function drawGauge(canvasId, aqi) {
+    const canvas = document.getElementById(canvasId);
+    if(!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const cx = 125, cy = 130, r = 100;
+
+    ctx.clearRect(0, 0, 250, 150);
+
+    // Background arc
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, Math.PI, 2 * Math.PI);
+    ctx.strokeStyle = '#333';
+    ctx.lineWidth = 20;
+    ctx.stroke();
+
+    // Color segments
+    const segments = [
+        { color: '#00e400', start: 0, end: 0.167 },
+        { color: '#ffff00', start: 0.167, end: 0.333 },
+        { color: '#ff7e00', start: 0.333, end: 0.5 },
+        { color: '#ff0000', start: 0.5, end: 0.667 },
+        { color: '#8f3f97', start: 0.667, end: 0.833 },
+        { color: '#7e0023', start: 0.833, end: 1.0 }
+    ];
+
+    segments.forEach(seg => {
+        ctx.beginPath();
+        ctx.arc(cx, cy, r,
+            Math.PI + seg.start * Math.PI,
+            Math.PI + seg.end * Math.PI);
+        ctx.strokeStyle = seg.color;
+        ctx.lineWidth = 20;
+        ctx.stroke();
+    });
+
+    // Needle
+    const maxAqi = 400;
+    const angle = Math.PI + (Math.min(aqi, maxAqi) / maxAqi) * Math.PI;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(
+        cx + (r - 25) * Math.cos(angle),
+        cy + (r - 25) * Math.sin(angle)
+    );
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+
+    // Center dot
+    ctx.beginPath();
+    ctx.arc(cx, cy, 8, 0, 2 * Math.PI);
+    ctx.fillStyle = '#fff';
+    ctx.fill();
+
+    // Labels
+    ctx.fillStyle = '#666';
+    ctx.font = '10px Arial';
+    ctx.fillText('0', 20, cy + 5);
+    ctx.fillText('400', 210, cy + 5);
+    ctx.fillText('200', cx - 8, cy - r + 15);
+}
+
+// Update all gauges
+function updateGauges() {
+    aqiDevices.forEach(device => {
+        // Fluctuate AQI
+        device.currentAqi += Math.floor(Math.random() * 20) - 10;
+        device.currentAqi = Math.max(10, Math.min(400, device.currentAqi));
+
+        drawGauge('gauge-' + device.id, device.currentAqi);
+
+        const info = getAqiInfo(device.currentAqi);
+        const valEl = document.getElementById('aqi-value-' + device.id);
+        const labelEl = document.getElementById('aqi-label-' + device.id);
+        const adviceEl = document.getElementById('aqi-advice-' + device.id);
+
+        if(valEl) { valEl.textContent = device.currentAqi; valEl.style.color = info.color; }
+        if(labelEl) { labelEl.textContent = info.label; labelEl.className = 'badge mt-1 ' + info.bg; }
+        if(adviceEl) adviceEl.textContent = info.advice;
+    });
+
+    updateZoneChart();
+}
+
+// AQI Trend Chart
+const trendCtx = document.getElementById('aqiTrendChart').getContext('2d');
+const trendLabels = Array.from({length: 24}, (_, i) => i + ':00');
+const trendData = Array.from({length: 24}, () => Math.floor(Math.random() * 250) + 50);
+
+const trendChart = new Chart(trendCtx, {
+    type: 'line',
+    data: {
+        labels: trendLabels,
+        datasets: [{
+            label: 'AQI Level',
+            data: trendData,
+            borderColor: '#00d4ff',
+            backgroundColor: 'rgba(0,212,255,0.1)',
+            borderWidth: 2,
+            fill: true,
+            tension: 0.4,
+            pointRadius: 3,
+            pointBackgroundColor: '#00d4ff'
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: { legend: { labels: { color: '#fff' }}},
+        scales: {
+            x: { ticks: { color: '#aaa' }, grid: { color: '#222' }},
+            y: { ticks: { color: '#aaa' }, grid: { color: '#222' }, min: 0, max: 400 }
+        }
+    }
+});
+
+// Zone AQI Chart
+const zoneCtx = document.getElementById('zoneAqiChart').getContext('2d');
+const zoneChart = new Chart(zoneCtx, {
+    type: 'bar',
+    data: {
+        labels: aqiDevices.map(d => d.zone),
+        datasets: [{
+            label: 'Current AQI',
+            data: aqiDevices.map(d => d.currentAqi),
+            backgroundColor: aqiDevices.map(d => getAqiInfo(d.currentAqi).color),
+            borderRadius: 5
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: { legend: { labels: { color: '#fff' }}},
+        scales: {
+            x: { ticks: { color: '#aaa' }, grid: { color: '#222' }},
+            y: { ticks: { color: '#aaa' }, grid: { color: '#222' }, min: 0, max: 400 }
+        }
+    }
+});
+
+function updateZoneChart() {
+    zoneChart.data.datasets[0].data = aqiDevices.map(d => d.currentAqi);
+    zoneChart.data.datasets[0].backgroundColor = aqiDevices.map(d => getAqiInfo(d.currentAqi).color);
+    zoneChart.update();
+}
+
+// Update every 2 seconds
+setInterval(() => {
+    updateGauges();
+    trendData.shift();
+    trendData.push(Math.floor(Math.random() * 250) + 50);
+    trendChart.update();
+}, 2000);
+
+// Initial draw
+updateGauges();
+</script>
+{% endblock %}

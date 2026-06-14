@@ -1,0 +1,216 @@
+{% extends 'base.html' %}
+{% block title %}Sensor Readings{% endblock %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="text-white">Sensor Readings</h4>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addReadingModal">
+        <i class="fas fa-plus me-2"></i>Add Reading
+    </button>
+</div>
+
+<!-- Tabs -->
+<ul class="nav nav-tabs mb-4" style="border-color:#30363d;">
+    <li class="nav-item">
+        <a class="nav-link active" data-bs-toggle="tab" href="#aqi" style="color:#00d4ff; border-color:#30363d #30363d transparent;">
+            <i class="fas fa-wind me-2"></i>AQI
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" data-bs-toggle="tab" href="#traffic" style="color:#8b949e;">
+            <i class="fas fa-traffic-light me-2"></i>Traffic
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" data-bs-toggle="tab" href="#energy" style="color:#8b949e;">
+            <i class="fas fa-bolt me-2"></i>Energy
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" data-bs-toggle="tab" href="#latest" style="color:#8b949e;">
+            <i class="fas fa-satellite-dish me-2"></i>Latest Per Device
+        </a>
+    </li>
+</ul>
+
+<div class="tab-content">
+    <!-- AQI Tab -->
+    <div class="tab-pane fade show active" id="aqi">
+        <div class="card-dark">
+            <h5><i class="fas fa-wind me-2 text-info"></i>AQI Sensor Readings</h5>
+            <div class="table-responsive">
+                <table class="table table-dark table-hover">
+                    <thead>
+                        <tr><th>Device</th><th>Zone</th><th>Value</th><th>Time</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for r in aqi_readings %}
+                        <tr>
+                            <td><strong class="text-info">{{ r.device_code }}</strong></td>
+                            <td>{{ r.zone_name }}</td>
+                            <td>
+                                <span class="badge 
+                                    {% if r.value > 300 %}bg-danger
+                                    {% elif r.value > 200 %}bg-warning
+                                    {% elif r.value > 100 %}bg-info
+                                    {% else %}bg-success{% endif %}">
+                                    {{ r.value }} AQI
+                                </span>
+                            </td>
+                            <td style="font-size:12px;">{{ r.recorded_at.strftime('%d %b %H:%M') }}</td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="4" class="text-center text-muted">No AQI readings</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Traffic Tab -->
+    <div class="tab-pane fade" id="traffic">
+        <div class="card-dark">
+            <h5><i class="fas fa-traffic-light me-2 text-warning"></i>Traffic Sensor Readings</h5>
+            <div class="table-responsive">
+                <table class="table table-dark table-hover">
+                    <thead>
+                        <tr><th>Device</th><th>Zone</th><th>Speed</th><th>Vehicles</th><th>Congestion</th><th>Time</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for r in traffic_readings %}
+                        <tr>
+                            <td><strong class="text-info">{{ r.device_code }}</strong></td>
+                            <td>{{ r.zone_name }}</td>
+                            <td>{{ r.value }} km/h</td>
+                            <td>{{ r.vehicle_count }}</td>
+                            <td>
+                                <span class="badge
+                                    {% if r.congestion_level == 'free' %}bg-success
+                                    {% elif r.congestion_level == 'moderate' %}bg-info
+                                    {% elif r.congestion_level == 'heavy' %}bg-warning
+                                    {% else %}bg-danger{% endif %}">
+                                    {{ r.congestion_level|upper }}
+                                </span>
+                            </td>
+                            <td style="font-size:12px;">{{ r.recorded_at.strftime('%d %b %H:%M') }}</td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="6" class="text-center text-muted">No traffic readings</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Energy Tab -->
+    <div class="tab-pane fade" id="energy">
+        <div class="card-dark">
+            <h5><i class="fas fa-bolt me-2 text-warning"></i>Energy Meter Readings</h5>
+            <div class="table-responsive">
+                <table class="table table-dark table-hover">
+                    <thead>
+                        <tr><th>Device</th><th>Zone</th><th>kWh</th><th>Time</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for r in energy_readings %}
+                        <tr>
+                            <td><strong class="text-info">{{ r.device_code }}</strong></td>
+                            <td>{{ r.zone_name }}</td>
+                            <td>
+                                <span class="badge 
+                                    {% if r.value > 400 %}bg-danger
+                                    {% elif r.value > 300 %}bg-warning
+                                    {% else %}bg-success{% endif %}">
+                                    {{ r.value }} kWh
+                                </span>
+                            </td>
+                            <td style="font-size:12px;">{{ r.recorded_at.strftime('%d %b %H:%M') }}</td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="4" class="text-center text-muted">No energy readings</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Latest Per Device Tab -->
+    <div class="tab-pane fade" id="latest">
+        <div class="card-dark">
+            <h5><i class="fas fa-satellite-dish me-2 text-info"></i>Latest Reading Per Device</h5>
+            <div class="table-responsive">
+                <table class="table table-dark table-hover">
+                    <thead>
+                        <tr><th>Device</th><th>Zone</th><th>Type</th><th>Value</th><th>Time</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for r in latest_readings %}
+                        <tr>
+                            <td><strong class="text-info">{{ r.device_code }}</strong></td>
+                            <td>{{ r.zone_name }}</td>
+                            <td>{{ r.sensor_type }}</td>
+                            <td><span class="badge bg-primary">{{ r.value }} {{ r.unit }}</span></td>
+                            <td style="font-size:12px;">{{ r.recorded_at.strftime('%d %b %H:%M') }}</td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="5" class="text-center text-muted">No readings</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Reading Modal -->
+<div class="modal fade" id="addReadingModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content bg-dark border border-secondary">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title text-white"><i class="fas fa-satellite-dish me-2"></i>Add Sensor Reading</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="/sensors/add">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="text-white">Device (Active Only)</label>
+                        <select name="device_id" class="form-select bg-dark text-white border-secondary mt-1" required>
+                            {% for device in active_devices %}
+                            <option value="{{ device.device_id }}">{{ device.device_code }} — {{ device.device_type }} ({{ device.zone_name }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="text-white">Sensor Type</label>
+                        <select name="sensor_type" class="form-select bg-dark text-white border-secondary mt-1" required>
+                            <option value="AQI">AQI</option>
+                            <option value="Traffic">Traffic</option>
+                            <option value="Energy">Energy</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="text-white">Value</label>
+                        <input type="number" step="0.01" name="value" class="form-control bg-dark text-white border-secondary mt-1" required placeholder="e.g. 125.5">
+                    </div>
+                    <div class="mb-3">
+                        <label class="text-white">Unit</label>
+                        <select name="unit" class="form-select bg-dark text-white border-secondary mt-1">
+                            <option value="AQI">AQI</option>
+                            <option value="km/h">km/h</option>
+                            <option value="kWh">kWh</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-save me-2"></i>Save Reading</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

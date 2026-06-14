@@ -1,0 +1,101 @@
+{% extends 'base.html' %}
+{% block title %}Audit Logs{% endblock %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="text-white"><i class="fas fa-shield-alt me-2 text-warning"></i>Audit Logs</h4>
+    <span class="badge bg-warning text-dark">Security Monitor</span>
+</div>
+
+<!-- Action Count Cards -->
+<div class="row g-4 mb-4">
+    {% for ac in action_counts %}
+    <div class="col-md-2">
+        <div class="kpi-card">
+            <div class="kpi-icon 
+                {% if ac.action_type == 'LOGIN' %}bg-success
+                {% elif ac.action_type == 'INSERT' %}bg-primary
+                {% elif ac.action_type == 'UPDATE' %}bg-warning
+                {% elif ac.action_type == 'DELETE' %}bg-danger
+                {% elif ac.action_type == 'ALERT_RESOLUTION' %}bg-info
+                {% else %}bg-secondary{% endif %}">
+                <i class="fas 
+                    {% if ac.action_type == 'LOGIN' %}fa-sign-in-alt
+                    {% elif ac.action_type == 'INSERT' %}fa-plus
+                    {% elif ac.action_type == 'UPDATE' %}fa-edit
+                    {% elif ac.action_type == 'DELETE' %}fa-trash
+                    {% elif ac.action_type == 'ALERT_RESOLUTION' %}fa-check
+                    {% else %}fa-tools{% endif %}"></i>
+            </div>
+            <div class="kpi-info">
+                <h3>{{ ac.count }}</h3>
+                <p>{{ ac.action_type }}</p>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Audit Logs Table -->
+<div class="card-dark">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5><i class="fas fa-history me-2 text-info"></i>Activity History</h5>
+        <input type="text" id="auditSearch" class="form-control bg-dark text-white border-secondary" 
+               style="width:250px;" placeholder="Search logs...">
+    </div>
+    <div class="table-responsive">
+        <table class="table table-dark table-hover" id="auditTable">
+            <thead>
+                <tr>
+                    <th>User</th>
+                    <th>Action</th>
+                    <th>Table</th>
+                    <th>Details</th>
+                    <th>IP Address</th>
+                    <th>Time</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in logs %}
+                <tr>
+                    <td>
+                        <i class="fas fa-user me-1 text-info"></i>
+                        {{ log.username or 'System' }}
+                    </td>
+                    <td>
+                        <span class="badge 
+                            {% if log.action_type == 'LOGIN' %}bg-success
+                            {% elif log.action_type == 'INSERT' %}bg-primary
+                            {% elif log.action_type == 'UPDATE' %}bg-warning text-dark
+                            {% elif log.action_type == 'DELETE' %}bg-danger
+                            {% elif log.action_type == 'ALERT_RESOLUTION' %}bg-info
+                            {% else %}bg-secondary{% endif %}">
+                            {{ log.action_type }}
+                        </span>
+                    </td>
+                    <td>{{ log.table_affected or '-' }}</td>
+                    <td style="font-size:12px;">{{ log.action_details or '-' }}</td>
+                    <td><code style="color:#00d4ff;">{{ log.ip_address or '-' }}</code></td>
+                    <td style="font-size:12px;">{{ log.created_at.strftime('%d %b %Y %H:%M:%S') }}</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="6" class="text-center text-muted">No audit logs yet</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('auditSearch').addEventListener('keyup', function() {
+    const search = this.value.toLowerCase();
+    const rows = document.querySelectorAll('#auditTable tbody tr');
+    rows.forEach(row => {
+        row.style.display = row.textContent.toLowerCase().includes(search) ? '' : 'none';
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,144 @@
+{% extends 'base.html' %}
+{% block title %}Alert Management{% endblock %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="text-white">Alert Management</h4>
+</div>
+
+<!-- Severity Cards -->
+<div class="row g-4 mb-4">
+    <div class="col-md-3">
+        <div class="kpi-card">
+            <div class="kpi-icon bg-danger"><i class="fas fa-exclamation-circle"></i></div>
+            <div class="kpi-info">
+                <h3>{% for s in severity_counts %}{% if s.severity == 'critical' %}{{ s.count }}{% endif %}{% endfor %}</h3>
+                <p>Critical</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="kpi-card">
+            <div class="kpi-icon bg-warning"><i class="fas fa-exclamation-triangle"></i></div>
+            <div class="kpi-info">
+                <h3>{% for s in severity_counts %}{% if s.severity == 'high' %}{{ s.count }}{% endif %}{% endfor %}</h3>
+                <p>High</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="kpi-card">
+            <div class="kpi-icon bg-info"><i class="fas fa-info-circle"></i></div>
+            <div class="kpi-info">
+                <h3>{% for s in severity_counts %}{% if s.severity == 'medium' %}{{ s.count }}{% endif %}{% endfor %}</h3>
+                <p>Medium</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="kpi-card">
+            <div class="kpi-icon bg-success"><i class="fas fa-check-circle"></i></div>
+            <div class="kpi-info">
+                <h3>{% for s in severity_counts %}{% if s.severity == 'low' %}{{ s.count }}{% endif %}{% endfor %}</h3>
+                <p>Low</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Alerts Table -->
+    <div class="col-xl-8">
+        <div class="card-dark">
+            <h5><i class="fas fa-bell me-2 text-danger"></i>All Alerts</h5>
+            <div class="table-responsive">
+                <table class="table table-dark table-hover">
+                    <thead>
+                        <tr>
+                            <th>Device</th>
+                            <th>Zone</th>
+                            <th>Type</th>
+                            <th>Severity</th>
+                            <th>Status</th>
+                            <th>Time</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for alert in alerts %}
+                        <tr>
+                            <td><strong class="text-info">{{ alert.device_code }}</strong></td>
+                            <td>{{ alert.zone_name }}</td>
+                            <td>{{ alert.alert_type }}</td>
+                            <td>
+                                <span class="badge 
+                                    {% if alert.severity == 'critical' %}bg-danger
+                                    {% elif alert.severity == 'high' %}bg-warning
+                                    {% elif alert.severity == 'medium' %}bg-info
+                                    {% else %}bg-success{% endif %}">
+                                    {{ alert.severity|upper }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if alert.is_resolved %}
+                                <span class="badge bg-success">Resolved</span>
+                                {% else %}
+                                <span class="badge bg-danger">Open</span>
+                                {% endif %}
+                            </td>
+                            <td style="font-size:12px;">{{ alert.created_at.strftime('%d %b %Y %H:%M') }}</td>
+                            <td>
+                                {% if not alert.is_resolved %}
+                                <a href="/alerts/resolve/{{ alert.alert_id }}" class="btn btn-sm btn-success">
+                                    <i class="fas fa-check"></i> Resolve
+                                </a>
+                                {% else %}
+                                <span class="text-muted" style="font-size:12px;">Resolved</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="7" class="text-center text-muted">No alerts found</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Severity Chart -->
+    <div class="col-xl-4">
+        <div class="card-dark">
+            <h5><i class="fas fa-chart-pie me-2 text-warning"></i>Severity Breakdown</h5>
+            <canvas id="severityChart" height="250"></canvas>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+const severityCtx = document.getElementById('severityChart').getContext('2d');
+new Chart(severityCtx, {
+    type: 'doughnut',
+    data: {
+        labels: ['Critical', 'High', 'Medium', 'Low'],
+        datasets: [{
+            data: [
+                {% for s in severity_counts %}{% if s.severity == 'critical' %}{{ s.count }}{% endif %}{% endfor %} || 0,
+                {% for s in severity_counts %}{% if s.severity == 'high' %}{{ s.count }}{% endif %}{% endfor %} || 0,
+                {% for s in severity_counts %}{% if s.severity == 'medium' %}{{ s.count }}{% endif %}{% endfor %} || 0,
+                {% for s in severity_counts %}{% if s.severity == 'low' %}{{ s.count }}{% endif %}{% endfor %} || 0
+            ],
+            backgroundColor: ['#dc3545', '#ffc107', '#17a2b8', '#28a745'],
+            borderWidth: 0
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: { legend: { labels: { color: '#fff' }}}
+    }
+});
+</script>
+{% endblock %}

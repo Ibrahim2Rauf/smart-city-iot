@@ -1,0 +1,170 @@
+{% extends 'base.html' %}
+{% block title %}Advanced Analytics{% endblock %}
+{% block content %}
+
+<div class="mb-4">
+    <h4 class="text-white">Advanced Analytics</h4>
+    <p class="text-muted">Advanced SQL — Subqueries, JOINs, HAVING, GROUP BY</p>
+</div>
+
+<div class="row g-4 mb-4">
+    <!-- Device Health Scores -->
+    <div class="col-xl-6">
+        <div class="card-dark">
+            <h5><i class="fas fa-heartbeat me-2 text-danger"></i>Device Health Scores</h5>
+            <div class="table-responsive">
+                <table class="table table-dark table-hover">
+                    <thead>
+                        <tr>
+                            <th>Device</th>
+                            <th>Zone</th>
+                            <th>Status</th>
+                            <th>Health</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for d in device_health %}
+                        <tr>
+                            <td><strong class="text-info">{{ d.device_code }}</strong></td>
+                            <td>{{ d.zone_name }}</td>
+                            <td>
+                                <span class="badge 
+                                    {% if d.status == 'active' %}bg-success
+                                    {% elif d.status == 'maintenance' %}bg-warning
+                                    {% else %}bg-danger{% endif %}">
+                                    {{ d.status|upper }}
+                                </span>
+                            </td>
+                            <td>
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="progress flex-grow-1" style="height:8px; background:#333;">
+                                        <div class="progress-bar 
+                                            {% if d.health_score >= 80 %}bg-success
+                                            {% elif d.health_score >= 50 %}bg-warning
+                                            {% else %}bg-danger{% endif %}"
+                                            style="width:{{ d.health_score }}%">
+                                        </div>
+                                    </div>
+                                    <span style="font-size:12px; color:#aaa;">{{ d.health_score }}%</span>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Zone Analytics Report -->
+    <div class="col-xl-6">
+        <div class="card-dark">
+            <h5><i class="fas fa-chart-bar me-2 text-info"></i>Zone Analytics Report</h5>
+            <div class="table-responsive">
+                <table class="table table-dark table-hover">
+                    <thead>
+                        <tr>
+                            <th>Zone</th>
+                            <th>Devices</th>
+                            <th>Alerts</th>
+                            <th>Maintenance</th>
+                            <th>Energy</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for z in zone_report %}
+                        <tr>
+                            <td>{{ z.zone_name }}</td>
+                            <td><span class="badge bg-primary">{{ z.total_devices }}</span></td>
+                            <td><span class="badge bg-danger">{{ z.total_alerts }}</span></td>
+                            <td><span class="badge bg-warning">{{ z.total_maintenance }}</span></td>
+                            <td>{{ "%.1f"|format(z.total_energy or 0) }} kWh</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <!-- Top Polluted Zones -->
+    <div class="col-xl-6">
+        <div class="card-dark">
+            <h5><i class="fas fa-smog me-2 text-warning"></i>Top Polluted Zones (AQI)</h5>
+            {% if top_polluted %}
+            <canvas id="pollutionChart" height="200"></canvas>
+            {% else %}
+            <p class="text-muted text-center mt-3">No AQI sensor data available</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Above Average Energy -->
+    <div class="col-xl-6">
+        <div class="card-dark">
+            <h5><i class="fas fa-bolt me-2 text-danger"></i>Above Average Energy Zones</h5>
+            {% if above_avg_energy %}
+            <canvas id="energyAvgChart" height="200"></canvas>
+            {% else %}
+            <p class="text-muted text-center mt-3">No energy data available</p>
+            {% endif %}
+            {% for z in above_avg_energy %}
+            <div class="d-flex justify-content-between align-items-center mt-2 p-2" style="background:#1f2937; border-radius:8px;">
+                <span class="text-white">{{ z.zone_name }}</span>
+                <span class="badge bg-danger">{{ "%.1f"|format(z.total_kwh) }} kWh</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+{% if top_polluted %}
+const pollCtx = document.getElementById('pollutionChart').getContext('2d');
+new Chart(pollCtx, {
+    type: 'bar',
+    data: {
+        labels: [{% for z in top_polluted %}'{{ z.zone_name }}',{% endfor %}],
+        datasets: [{
+            label: 'Avg AQI',
+            data: [{% for z in top_polluted %}{{ z.avg_aqi }},{% endfor %}],
+            backgroundColor: 'rgba(255,99,132,0.7)',
+            borderRadius: 5
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: { legend: { labels: { color: '#fff' }}},
+        scales: {
+            x: { ticks: { color: '#aaa' }, grid: { color: '#333' }},
+            y: { ticks: { color: '#aaa' }, grid: { color: '#333' }}
+        }
+    }
+});
+{% endif %}
+
+{% if above_avg_energy %}
+const energyAvgCtx = document.getElementById('energyAvgChart').getContext('2d');
+new Chart(energyAvgCtx, {
+    type: 'doughnut',
+    data: {
+        labels: [{% for z in above_avg_energy %}'{{ z.zone_name }}',{% endfor %}],
+        datasets: [{
+            data: [{% for z in above_avg_energy %}{{ z.total_kwh }},{% endfor %}],
+            backgroundColor: ['#dc3545', '#ffc107', '#17a2b8', '#28a745'],
+            borderWidth: 0
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: { legend: { labels: { color: '#fff' }}}
+    }
+});
+{% endif %}
+</script>
+{% endblock %}

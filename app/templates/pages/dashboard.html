@@ -1,0 +1,194 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+
+<!-- KPI Cards -->
+<div class="row g-4 mb-4">
+    <div class="col-xl-3 col-md-6">
+        <div class="kpi-card">
+            <div class="kpi-icon bg-primary">
+                <i class="fas fa-microchip"></i>
+            </div>
+            <div class="kpi-info">
+                <h3>{{ total_devices }}</h3>
+                <p>Total Devices</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-md-6">
+        <div class="kpi-card">
+            <div class="kpi-icon bg-danger">
+                <i class="fas fa-bell"></i>
+            </div>
+            <div class="kpi-info">
+                <h3>{{ open_alerts }}</h3>
+                <p>Open Alerts</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-md-6">
+        <div class="kpi-card">
+            <div class="kpi-icon bg-success">
+                <i class="fas fa-map-marked-alt"></i>
+            </div>
+            <div class="kpi-info">
+                <h3>{{ total_zones }}</h3>
+                <p>Total City Zones</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-md-6">
+        <div class="kpi-card">
+            <div class="kpi-icon bg-warning">
+                <i class="fas fa-chart-line"></i>
+            </div>
+            <div class="kpi-info">
+                <h3>{{ readings_today }}</h3>
+                <p>Readings Today</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Row -->
+<div class="row g-4 mb-4">
+    <div class="col-xl-8">
+        <div class="card-dark">
+            <h5><i class="fas fa-wind me-2 text-info"></i>AQI Trend (Last 24 Hours)</h5>
+            <canvas id="aqiChart" height="100"></canvas>
+        </div>
+    </div>
+    <div class="col-xl-4">
+        <div class="card-dark">
+            <h5><i class="fas fa-microchip me-2 text-warning"></i>Device Status</h5>
+            <canvas id="deviceChart" height="200"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- Alerts + Energy Row -->
+<div class="row g-4">
+    <div class="col-xl-6">
+        <div class="card-dark">
+            <h5><i class="fas fa-exclamation-triangle me-2 text-danger"></i>Critical Alerts</h5>
+            <div class="table-responsive">
+                <table class="table table-dark table-hover">
+                    <thead>
+                        <tr>
+                            <th>Device</th>
+                            <th>Zone</th>
+                            <th>Severity</th>
+                            <th>Message</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for alert in recent_alerts %}
+                        <tr>
+                            <td>{{ alert.device_code }}</td>
+                            <td>{{ alert.zone_name }}</td>
+                            <td>
+                                <span class="badge 
+                                    {% if alert.severity == 'critical' %}bg-danger
+                                    {% elif alert.severity == 'high' %}bg-warning
+                                    {% elif alert.severity == 'medium' %}bg-info
+                                    {% else %}bg-success{% endif %}">
+                                    {{ alert.severity|upper }}
+                                </span>
+                            </td>
+                            <td>{{ alert.message[:40] }}...</td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="4" class="text-center text-muted">No active alerts</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-6">
+        <div class="card-dark">
+            <h5><i class="fas fa-bolt me-2 text-warning"></i>Zone Energy Consumption</h5>
+            <canvas id="energyChart" height="150"></canvas>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// AQI Chart
+const aqiCtx = document.getElementById('aqiChart').getContext('2d');
+new Chart(aqiCtx, {
+    type: 'line',
+    data: {
+        labels: ['12am','2am','4am','6am','8am','10am','12pm','2pm','4pm','6pm','8pm','10pm'],
+        datasets: [{
+            label: 'AQI Level',
+            data: [45, 52, 48, 60, 75, 88, 92, 85, 78, 95, 88, 72],
+            borderColor: '#00d4ff',
+            backgroundColor: 'rgba(0,212,255,0.1)',
+            borderWidth: 2,
+            fill: true,
+            tension: 0.4
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: { legend: { labels: { color: '#fff' }}},
+        scales: {
+            x: { ticks: { color: '#aaa' }, grid: { color: '#333' }},
+            y: { ticks: { color: '#aaa' }, grid: { color: '#333' }}
+        }
+    }
+});
+
+// Device Status Donut
+const deviceCtx = document.getElementById('deviceChart').getContext('2d');
+new Chart(deviceCtx, {
+    type: 'doughnut',
+    data: {
+        labels: ['Active', 'Maintenance', 'Inactive'],
+        datasets: [{
+            data: [
+                {% for s in device_status %}
+                    {% if s.status == 'active' %}{{ s.count }},
+                    {% elif s.status == 'maintenance' %}{{ s.count }},
+                    {% elif s.status == 'inactive' %}{{ s.count }},
+                    {% endif %}
+                {% endfor %}
+            ],
+            backgroundColor: ['#28a745', '#ffc107', '#dc3545'],
+            borderWidth: 0
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: { legend: { labels: { color: '#fff' }}}
+    }
+});
+
+// Energy Chart
+const energyCtx = document.getElementById('energyChart').getContext('2d');
+new Chart(energyCtx, {
+    type: 'bar',
+    data: {
+        labels: ['Zone A', 'Zone B', 'Zone C', 'Zone D', 'Zone E'],
+        datasets: [{
+            label: 'kWh',
+            data: [320, 450, 280, 510, 390],
+            backgroundColor: 'rgba(255,193,7,0.7)',
+            borderRadius: 5
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: { legend: { labels: { color: '#fff' }}},
+        scales: {
+            x: { ticks: { color: '#aaa' }, grid: { color: '#333' }},
+            y: { ticks: { color: '#aaa' }, grid: { color: '#333' }}
+        }
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart City IoT — Login</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background: #000;
+            min-height: 100vh;
+            display: flex;
+            font-family: 'Segoe UI', sans-serif;
+            overflow: hidden;
+        }
+
+        /* Aurora Background */
+        .aurora {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 0;
+            overflow: hidden;
+        }
+
+        .aurora-blob {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(120px);
+            opacity: 0.15;
+            animation: blobMove 12s ease-in-out infinite;
+        }
+
+        .blob1 {
+            width: 600px; height: 600px;
+            background: radial-gradient(circle, #00d4ff, transparent);
+            top: -200px; left: -200px;
+            animation-delay: 0s;
+        }
+
+        .blob2 {
+            width: 500px; height: 500px;
+            background: radial-gradient(circle, #0066ff, transparent);
+            bottom: -200px; right: -200px;
+            animation-delay: 4s;
+        }
+
+        .blob3 {
+            width: 400px; height: 400px;
+            background: radial-gradient(circle, #7b2ff7, transparent);
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            animation-delay: 2s;
+        }
+
+        @keyframes blobMove {
+            0%, 100% { transform: scale(1) translate(0, 0); }
+            33% { transform: scale(1.1) translate(30px, -30px); }
+            66% { transform: scale(0.9) translate(-20px, 20px); }
+        }
+
+        /* Mouse spotlight */
+        .spotlight {
+            position: fixed;
+            width: 600px; height: 600px;
+            background: radial-gradient(circle, rgba(0,212,255,0.08) 0%, transparent 70%);
+            border-radius: 50%;
+            pointer-events: none;
+            transform: translate(-50%, -50%);
+            transition: all 0.1s ease;
+            z-index: 1;
+        }
+
+        /* Grid */
+        .grid-bg {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background-image:
+                linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
+            background-size: 60px 60px;
+            z-index: 1;
+        }
+
+        /* Main layout */
+        .container {
+            display: flex;
+            width: 100%;
+            position: relative;
+            z-index: 2;
+        }
+
+        /* Left Panel */
+        .left-panel {
+            width: 58%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 60px;
+            position: relative;
+        }
+
+        .left-content {
+            text-align: center;
+            animation: fadeInUp 1s ease forwards;
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(40px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Logo */
+        .logo-ring {
+            width: 120px; height: 120px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, rgba(0,212,255,0.1), rgba(0,102,255,0.1));
+            border: 1px solid rgba(0,212,255,0.3);
+            display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 30px;
+            position: relative;
+            animation: float 4s ease-in-out infinite;
+        }
+
+        .logo-ring::before {
+            content: '';
+            position: absolute;
+            inset: -3px;
+            border-radius: 50%;
+            background: conic-gradient(from 0deg, #00d4ff, transparent, #0066ff, transparent, #00d4ff);
+            animation: spin 4s linear infinite;
+            z-index: -1;
+        }
+
+        .logo-ring::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 50%;
+            background: #000;
+            z-index: -1;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-15px); }
+        }
+
+        .logo-ring i {
+            font-size: 45px;
+            color: #00d4ff;
+            filter: drop-shadow(0 0 15px rgba(0,212,255,0.8));
+        }
+
+        /* Title */
+        .main-title {
+            font-size: 52px;
+            font-weight: 800;
+            color: #fff;
+            margin-bottom: 10px;
+            letter-spacing: -2px;
+            line-height: 1;
+        }
+
+        .main-title .highlight {
+            background: linear-gradient(135deg, #00d4ff, #0066ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            color: #8b949e;
+            font-size: 16px;
+            margin-bottom: 15px;
+        }
+
+        /* Typing text */
+        .typing-text {
+            color: #00d4ff;
+            font-size: 14px;
+            margin-bottom: 50px;
+            font-family: monospace;
+            min-height: 20px;
+        }
+
+        .typing-cursor {
+            display: inline-block;
+            width: 2px; height: 14px;
+            background: #00d4ff;
+            animation: blink 0.7s infinite;
+            vertical-align: middle;
+            margin-left: 2px;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+
+        /* Stats */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            width: 100%;
+            max-width: 550px;
+        }
+
+        .stat-card {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 16px;
+            padding: 20px 15px;
+            text-align: center;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s;
+            cursor: default;
+        }
+
+        .stat-card:hover {
+            background: rgba(0,212,255,0.05);
+            border-color: rgba(0,212,255,0.3);
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0,212,255,0.1);
+        }
+
+        .stat-card i {
+            font-size: 20px;
+            color: #00d4ff;
+            margin-bottom: 10px;
+            display: block;
+        }
+
+        .stat-card h3 {
+            font-size: 26px;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 4px;
+        }
+
+        .stat-card p {
+            font-size: 11px;
+            color: #666;
+            margin: 0;
+        }
+
+        /* Live badge */
+        .live-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(40,167,69,0.1);
+            border: 1px solid rgba(40,167,69,0.25);
+            border-radius: 20px;
+            padding: 5px 14px;
+            font-size: 12px;
+            color: #28a745;
+            margin-bottom: 25px;
+        }
+
+        .live-dot {
+            width: 7px; height: 7px;
+            background: #28a745;
+            border-radius: 50%;
+            animation: livePulse 1.5s infinite;
+        }
+
+        @keyframes livePulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(40,167,69,0.4); }
+            50% { box-shadow: 0 0 0 6px rgba(40,167,69,0); }
+        }
+
+        /* Right Panel */
+        .right-panel {
+            width: 42%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 50px 60px;
+            border-left: 1px solid rgba(255,255,255,0.06);
+            background: rgba(255,255,255,0.02);
+            backdrop-filter: blur(20px);
+            animation: fadeInRight 1s ease 0.3s forwards;
+            opacity: 0;
+        }
+
+        @keyframes fadeInRight {
+            from { opacity: 0; transform: translateX(30px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        .login-box { width: 100%; max-width: 360px; }
+
+        .login-box h2 {
+            font-size: 30px;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 6px;
+        }
+
+        .login-box .welcome-sub {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 35px;
+        }
+
+        /* Form */
+        .form-group { margin-bottom: 18px; }
+
+        .form-group label {
+            display: block;
+            color: #8b949e;
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+
+        .input-wrap { position: relative; }
+
+        .input-wrap i {
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #444;
+            font-size: 14px;
+            transition: color 0.3s;
+        }
+
+        .input-wrap input {
+            width: 100%;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 12px;
+            padding: 14px 16px 14px 44px;
+            color: #fff;
+            font-size: 14px;
+            outline: none;
+            transition: all 0.3s;
+        }
+
+        .input-wrap input:focus {
+            border-color: rgba(0,212,255,0.5);
+            background: rgba(0,212,255,0.04);
+            box-shadow: 0 0 0 3px rgba(0,212,255,0.08);
+        }
+
+        .input-wrap input:focus ~ i,
+        .input-wrap:focus-within i { color: #00d4ff; }
+
+        .input-wrap input::placeholder { color: #333; }
+
+        /* Button */
+        .btn-login {
+            width: 100%;
+            background: linear-gradient(135deg, #00d4ff 0%, #0066ff 100%);
+            border: none;
+            border-radius: 12px;
+            padding: 15px;
+            color: #fff;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 8px;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s;
+        }
+
+        .btn-login::before {
+            content: '';
+            position: absolute;
+            top: 0; left: -100%;
+            width: 100%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .btn-login:hover::before { left: 100%; }
+
+        .btn-login:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(0,212,255,0.3);
+        }
+
+        /* Error */
+        .alert-error {
+            background: rgba(220,53,69,0.08);
+            border: 1px solid rgba(220,53,69,0.2);
+            border-radius: 10px;
+            padding: 12px 15px;
+            color: #ff6b7a;
+            font-size: 13px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            animation: shake 0.5s ease;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-5px); }
+            40%, 80% { transform: translateX(5px); }
+        }
+
+        /* Bottom icons */
+        .bottom-icons {
+            display: flex;
+            justify-content: center;
+            gap: 25px;
+            margin-top: 35px;
+            padding-top: 25px;
+            border-top: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .bottom-icon {
+            text-align: center;
+            opacity: 0.4;
+            transition: opacity 0.3s;
+        }
+
+        .bottom-icon:hover { opacity: 1; }
+
+        .bottom-icon i {
+            font-size: 18px;
+            color: #00d4ff;
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .bottom-icon span {
+            font-size: 10px;
+            color: #666;
+        }
+
+        .footer {
+            text-align: center;
+            color: #333;
+            font-size: 11px;
+            margin-top: 25px;
+        }
+
+        /* Floating particles */
+        .particle {
+            position: fixed;
+            pointer-events: none;
+            border-radius: 50%;
+            background: #00d4ff;
+            opacity: 0;
+            animation: particleRise linear infinite;
+            z-index: 1;
+        }
+
+        @keyframes particleRise {
+            0% { transform: translateY(100vh) scale(0); opacity: 0; }
+            10% { opacity: 0.4; }
+            90% { opacity: 0.2; }
+            100% { transform: translateY(-10vh) scale(1); opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="aurora">
+    <div class="aurora-blob blob1"></div>
+    <div class="aurora-blob blob2"></div>
+    <div class="aurora-blob blob3"></div>
+</div>
+
+<div class="grid-bg"></div>
+<div class="spotlight" id="spotlight"></div>
+
+<div class="container">
+    <!-- Left Panel -->
+    <div class="left-panel">
+        <div class="left-content">
+            <div class="logo-ring">
+                <i class="fas fa-city"></i>
+            </div>
+
+            <div class="live-badge">
+                <div class="live-dot"></div>
+                All Systems Operational
+            </div>
+
+            <h1 class="main-title">
+                Smart <span class="highlight">City</span><br>IoT Platform
+            </h1>
+            <p class="subtitle">Centralized Urban Intelligence System</p>
+
+            <div class="typing-text" id="typingText">
+                <span id="typingContent"></span>
+                <span class="typing-cursor"></span>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <i class="fas fa-microchip"></i>
+                    <h3 id="stat-devices">0</h3>
+                    <p>Devices</p>
+                </div>
+                <div class="stat-card">
+                    <i class="fas fa-bell"></i>
+                    <h3 id="stat-alerts">0</h3>
+                    <p>Alerts</p>
+                </div>
+                <div class="stat-card">
+                    <i class="fas fa-map-marked-alt"></i>
+                    <h3 id="stat-zones">0</h3>
+                    <p>Zones</p>
+                </div>
+                <div class="stat-card">
+                    <i class="fas fa-chart-line"></i>
+                    <h3 id="stat-readings">0</h3>
+                    <p>Today</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Panel -->
+    <div class="right-panel">
+        <div class="login-box">
+            <h2>Welcome Back 👋</h2>
+            <p class="welcome-sub">Sign in to your control panel</p>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                    <div class="alert-error">
+                        <i class="fas fa-exclamation-circle"></i>
+                        {{ message }}
+                    </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <form method="POST">
+                <div class="form-group">
+                    <label>Username</label>
+                    <div class="input-wrap">
+                        <input type="text" name="username" placeholder="Enter username" required autofocus>
+                        <i class="fas fa-user"></i>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <div class="input-wrap">
+                        <input type="password" name="password" placeholder="Enter password" required>
+                        <i class="fas fa-lock"></i>
+                    </div>
+                </div>
+                <button type="submit" class="btn-login">
+                    <i class="fas fa-sign-in-alt me-2"></i> Sign In to Dashboard
+                </button>
+            </form>
+
+            <div class="bottom-icons">
+                <div class="bottom-icon">
+                    <i class="fas fa-shield-alt"></i>
+                    <span>Secure</span>
+                </div>
+                <div class="bottom-icon">
+                    <i class="fas fa-bolt"></i>
+                    <span>Real-time</span>
+                </div>
+                <div class="bottom-icon">
+                    <i class="fas fa-satellite-dish"></i>
+                    <span>IoT Ready</span>
+                </div>
+                <div class="bottom-icon">
+                    <i class="fas fa-chart-bar"></i>
+                    <span>Analytics</span>
+                </div>
+            </div>
+
+            <div class="footer">© 2026 Smart City IoT Platform v2.0</div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Mouse spotlight effect
+document.addEventListener('mousemove', (e) => {
+    const spotlight = document.getElementById('spotlight');
+    spotlight.style.left = e.clientX + 'px';
+    spotlight.style.top = e.clientY + 'px';
+});
+
+// Typing animation
+const texts = [
+    'Monitoring 8 IoT Devices...',
+    'Air Quality Index: Tracking...',
+    'Traffic Flow: Analyzing...',
+    'Energy Consumption: 11,236 kWh',
+    'System Status: All Online ✓'
+];
+let textIndex = 0, charIndex = 0, isDeleting = false;
+
+function type() {
+    const current = texts[textIndex];
+    const el = document.getElementById('typingContent');
+
+    if(!isDeleting) {
+        el.textContent = current.substring(0, charIndex + 1);
+        charIndex++;
+        if(charIndex === current.length) {
+            isDeleting = true;
+            setTimeout(type, 2000);
+            return;
+        }
+    } else {
+        el.textContent = current.substring(0, charIndex - 1);
+        charIndex--;
+        if(charIndex === 0) {
+            isDeleting = false;
+            textIndex = (textIndex + 1) % texts.length;
+        }
+    }
+    setTimeout(type, isDeleting ? 40 : 70);
+}
+type();
+
+// Animated counter
+function animateCounter(id, target) {
+    let current = 0;
+    const step = Math.ceil(target / 40);
+    const timer = setInterval(() => {
+        current += step;
+        if(current >= target) { current = target; clearInterval(timer); }
+        document.getElementById(id).textContent = current;
+    }, 40);
+}
+
+fetch('/api/stats')
+    .then(r => r.json())
+    .then(data => {
+        setTimeout(() => animateCounter('stat-devices', data.devices || 8), 500);
+        setTimeout(() => animateCounter('stat-alerts', data.alerts || 5), 700);
+        setTimeout(() => animateCounter('stat-zones', data.zones || 5), 900);
+        setTimeout(() => animateCounter('stat-readings', data.readings || 24), 1100);
+    })
+    .catch(() => {
+        setTimeout(() => animateCounter('stat-devices', 8), 500);
+        setTimeout(() => animateCounter('stat-alerts', 5), 700);
+        setTimeout(() => animateCounter('stat-zones', 5), 900);
+        setTimeout(() => animateCounter('stat-readings', 24), 1100);
+    });
+
+// Floating particles
+for(let i = 0; i < 25; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    p.style.left = Math.random() * 100 + 'vw';
+    p.style.width = p.style.height = (Math.random() * 4 + 1) + 'px';
+    p.style.animationDuration = (Math.random() * 15 + 10) + 's';
+    p.style.animationDelay = (Math.random() * 10) + 's';
+    document.body.appendChild(p);
+}
+</script>
+
+</body>
+</html>
